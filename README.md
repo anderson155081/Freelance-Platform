@@ -33,10 +33,16 @@
 
 ```bash
 # 克隆專案
-git clone https://github.com/your-username/freelance-platform.git
+git clone https://github.com/anderson155081/Freelance-Platform.git
 cd freelance-platform
 
-# 啟動所有服務
+# 複製環境變數文件
+cp .env.example .env
+
+# 啟動開發環境（推薦）
+docker-compose -f docker-compose.dev.yml up -d
+
+# 或啟動生產環境
 docker-compose up -d
 
 # 查看服務狀態
@@ -45,11 +51,17 @@ docker-compose ps
 
 ### 服務端點
 
+**開發環境：**
 - **前端應用**: http://localhost:3000
 - **API 服務**: http://localhost:8080
 - **資料庫**: localhost:5432
 - **Redis**: localhost:6379
-- **管理面板**: http://localhost:8080/admin
+- **Adminer (資料庫管理)**: http://localhost:8081
+- **Redis Commander**: http://localhost:8082
+
+**生產環境：**
+- **應用入口**: http://localhost (Nginx)
+- **管理面板**: http://localhost/admin
 
 ## 📁 專案結構
 
@@ -77,8 +89,9 @@ freelance-platform/
 │   └── go.mod
 ├── nginx/                   # Nginx 配置
 ├── scripts/                 # 部署腳本
-├── docker-compose.yml       # Docker 組合配置
-├── docker-compose.prod.yml  # 生產環境配置
+├── docker-compose.yml       # 生產環境配置
+├── docker-compose.dev.yml   # 開發環境配置
+├── docker-compose.test.yml  # 測試環境配置
 └── README.md
 ```
 
@@ -86,7 +99,17 @@ freelance-platform/
 
 ### 環境變數設置
 
-創建 `.env` 文件：
+複製並編輯環境變數文件：
+
+```bash
+# 複製範例文件
+cp .env.example .env
+
+# 編輯設置
+nano .env
+```
+
+主要配置項目：
 
 ```bash
 # 資料庫配置
@@ -186,24 +209,20 @@ docker system prune -a
 ### 測試指令
 
 ```bash
-### 後端測試
+### 測試指令
 
 ```bash
-# 在容器內執行測試
+# 執行所有測試
+docker-compose -f docker-compose.test.yml up --abort-on-container-exit
+
+# 單獨測試後端
 docker-compose exec api go test ./...
+
+# 單獨測試前端
+docker-compose exec frontend npm test
 
 # 測試覆蓋率
 docker-compose exec api go test -cover ./...
-```
-
-### 前端測試
-
-```bash
-# 在容器內執行測試
-docker-compose exec frontend npm test
-
-# E2E 測試
-docker-compose exec frontend npm run test:e2e
 ```
 ```
 
@@ -243,15 +262,15 @@ WS     /ws/chat/:room_id      # WebSocket 連接
 ### 開發環境部署
 
 ```bash
-# 使用開發配置
-docker-compose -f docker-compose.yml up -d
+# 使用開發配置（推薦用於開發）
+docker-compose -f docker-compose.dev.yml up -d
 ```
 
 ### 生產環境部署
 
 ```bash
 # 使用生產配置
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose up -d
 
 # 或使用部署腳本
 ./scripts/deploy.sh production
@@ -326,9 +345,9 @@ docker-compose exec redis redis-cli ping
 
 ## 📞 聯絡資訊
 
-- 專案維護者: anderson155081
-- Email: anderson155081@gmail.com
-- 專案連結: https://github.com/anderson155081/Freelance-Platform
+- 專案維護者: Your Name
+- Email: your.email@example.com
+- 專案連結: https://github.com/your-username/freelance-platform
 
 ## 🙏 致謝
 

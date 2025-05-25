@@ -1,0 +1,17 @@
+# frontend/Dockerfile.dev
+FROM node:24-alpine
+
+WORKDIR /app
+
+# 安裝依賴
+COPY package*.json ./
+RUN npm ci
+
+# 複製源代碼
+COPY . .
+
+# 暴露端口
+EXPOSE 3000
+
+# 啟動開發服務器
+CMD ["npm", "start"]

@@ -1,0 +1,273 @@
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Go specific
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+go.work.sum
+
+# Go build artifacts
+/backend/main
+/backend/cmd/main/main
+/backend/cmd/migrate/migrate
+/backend/cmd/seed/seed
+/backend/dist/
+/backend/build/
+
+# Go vendor directory
+/backend/vendor/
+
+# Go module cache
+go.sum
+
+# Node.js / React specific
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# React build output
+/frontend/build/
+/frontend/dist/
+
+# React development
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+/data/
+/postgres-data/
+/mysql-data/
+
+# Redis
+dump.rdb
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# JetBrains
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Certificate files
+*.pem
+*.key
+*.crt
+*.cert
+
+# Local development
+/scripts/local/
+/backups/
+/uploads/
+/storage/
+
+# Terraform (if used for infrastructure)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Kubernetes (if used)
+*.kubeconfig
+
+# AWS (if used)
+.aws/
+
+# Google Cloud (if used)
+.gcloud/
+
+# Test coverage
+coverage/
+coverage.out
+.nyc_output/
+
+# Performance monitoring
+.clinic/
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Next.js (if migrated later)
+.next/
+out/
+
+# Nuxt.js (if used)
+.nuxt
+dist
+
+# Gatsby files (if used)
+.cache/
+public
+
+# Vuepress build output (if used)
+.vuepress/dist
+
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Local Netlify folder
+.netlify
+
+# Vercel
+.vercel
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# Yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.* 

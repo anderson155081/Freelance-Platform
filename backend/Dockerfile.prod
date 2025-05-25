@@ -1,0 +1,30 @@
+# backend/Dockerfile.prod
+FROM golang:1.24.3-alpine AS builder
+
+WORKDIR /app
+
+# 安裝依賴
+COPY go.mod go.sum ./
+RUN go mod download
+
+# 複製源代碼
+COPY . .
+
+# 建構應用
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main cmd/server/main.go
+
+# 生產階段
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+
+# 從建構階段複製執行檔
+COPY --from=builder /app/main .
+COPY --from=builder /app/migrations ./migrations
+
+# 暴露端口
+EXPOSE 8080
+
+# 啟動應用
+CMD ["./main"]
