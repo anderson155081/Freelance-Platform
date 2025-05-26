@@ -2,35 +2,17 @@
 version: '3.8'
 
 services:
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/ssl:/etc/nginx/ssl
-    depends_on:
-      - frontend
-      - api
-    restart: unless-stopped
-
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
-    expose:
-      - "80"
-    environment:
-      - NODE_ENV=production
     restart: unless-stopped
 
   api:
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
-    expose:
-      - "8080"
+    restart: unless-stopped
     environment:
       - APP_ENV=production
       - DB_HOST=db
@@ -40,29 +22,39 @@ services:
     depends_on:
       - db
       - redis
-    restart: unless-stopped
 
   db:
     image: postgres:15-alpine
+    platform: linux/amd64
+    restart: unless-stopped
     environment:
-      - POSTGRES_DB=${DB_NAME}
-      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_DB=${DB_NAME:-freelance_platform}
+      - POSTGRES_USER=${DB_USER:-freelance_user}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/migrations:/docker-entrypoint-initdb.d
-    ports:
-      - "5432:5432"
-    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
+    platform: linux/amd64
+    restart: unless-stopped
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
+
+  nginx:
+    build:
+      context: ./nginx
     ports:
-      - "6379:6379"
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - frontend
+      - api
     restart: unless-stopped
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
 
 volumes:
   postgres_data:

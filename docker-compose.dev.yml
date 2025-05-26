@@ -15,7 +15,7 @@ services:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
       - FAST_REFRESH=true
-      - REACT_APP_API_URL=http://localhost:8080
+      - REACT_APP_API_URL=http://localhost:8080/api
     stdin_open: true
     tty: true
 
@@ -41,7 +41,8 @@ services:
     tty: true
 
   db:
-    image: postgres:15-alpine
+    image: postgres:17.5-alpine
+    platform: linux/arm64/v8
     environment:
       - POSTGRES_DB=freelance_platform_dev
       - POSTGRES_USER=dev_user
@@ -53,7 +54,8 @@ services:
       - "5432:5432"
 
   redis:
-    image: redis:7-alpine
+    image: redis:8.0.1-alpine
+    platform: linux/arm64/v8
     command: redis-server --appendonly yes
     volumes:
       - redis_dev_data:/data
@@ -62,17 +64,21 @@ services:
 
   # 開發時的資料庫管理工具
   adminer:
-    image: adminer
+    image: adminer:latest
+    platform: linux/arm64/v8
     ports:
       - "8081:8080"
     depends_on:
       - db
 
-  # Redis 管理工具
+  # Redis 管理工具 - 使用支援多平台的替代方案
   redis-commander:
-    image: rediscommander/redis-commander:latest
+    image: ghcr.io/joeferner/redis-commander:latest
+    platform: linux/arm64/v8
     environment:
       - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=admin
+      - HTTP_PASSWORD=admin
     ports:
       - "8082:8081"
     depends_on:

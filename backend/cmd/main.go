@@ -38,6 +38,7 @@ func main() {
 			auth.POST("/login", handlers.Login)
 			auth.POST("/logout", handlers.Logout)
 			auth.GET("/me", middleware.RequireAuth(), handlers.GetCurrentUser)
+			auth.PUT("/profile", middleware.RequireAuth(), handlers.UpdateProfile)
 		}
 
 		projects := api.Group("/projects")
@@ -47,17 +48,26 @@ func main() {
 			projects.GET("/:id", handlers.GetProject)
 			projects.PUT("/:id", middleware.RequireAuth(), handlers.UpdateProject)
 			projects.DELETE("/:id", middleware.RequireAuth(), handlers.DeleteProject)
+			projects.GET("/:id/bids", middleware.RequireAuth(), handlers.GetProjectBids)
+		}
+
+		bids := api.Group("/bids")
+		{
+			bids.POST("", middleware.RequireAuth(), handlers.CreateBid)
 		}
 
 		chats := api.Group("/chats")
 		{
 			chats.GET("", middleware.RequireAuth(), handlers.GetChats)
 			chats.POST("", middleware.RequireAuth(), handlers.CreateChat)
+			chats.GET("/:id/messages", middleware.RequireAuth(), handlers.GetChatMessages)
+		}
+
+		messages := api.Group("/messages")
+		{
+			messages.POST("", middleware.RequireAuth(), handlers.SendMessage)
 		}
 	}
-
-	// WebSocket route
-	r.GET("/ws/chat/:room_id", handlers.HandleWebSocket)
 
 	// Start server
 	port := os.Getenv("API_PORT")

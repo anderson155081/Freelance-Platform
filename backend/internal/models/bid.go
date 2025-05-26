@@ -12,10 +12,9 @@ type Bid struct {
 	Project      Project        `json:"project,omitempty"`
 	FreelancerID uint           `json:"freelancer_id" gorm:"not null"`
 	Freelancer   User           `json:"freelancer,omitempty"`
-	Amount       float64        `json:"amount" gorm:"not null"`
-	Currency     string         `json:"currency" gorm:"default:USD"`
-	Proposal     string         `json:"proposal" gorm:"type:text"`
-	Timeline     int            `json:"timeline"` // days to complete
+	Amount       int            `json:"amount" gorm:"not null"` // Amount in TWD
+	Proposal     string         `json:"proposal" gorm:"type:text"` // Detailed proposal
+	Timeline     string         `json:"timeline"` // e.g., "2週", "1個月"
 	Status       string         `json:"status" gorm:"default:pending"` // pending, accepted, rejected
 	CreatedAt    time.Time      `json:"created_at"`
 	UpdatedAt    time.Time      `json:"updated_at"`

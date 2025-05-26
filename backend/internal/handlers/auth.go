@@ -18,6 +18,23 @@ type AuthRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,min=6"`
 	Name     string `json:"name"`
+	Role     string `json:"role"`
+}
+
+type UpdateProfileRequest struct {
+	Name        string `json:"name"`
+	Bio         string `json:"bio"`
+	Skills      string `json:"skills"`
+	Role        string `json:"role"`
+	Profession  string `json:"profession"`
+	Experience  string `json:"experience"`
+	Portfolio   string `json:"portfolio"`
+	HourlyRate  int    `json:"hourly_rate"`
+	Available   *bool  `json:"available"` // pointer to distinguish between false and not provided
+	City        string `json:"city"`
+	Website     string `json:"website"`
+	LinkedIn    string `json:"linkedin"`
+	GitHub      string `json:"github"`
 }
 
 func Register(c *gin.Context) {
@@ -34,6 +51,15 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	// Validate role
+	if req.Role == "" {
+		req.Role = "freelancer" // Default to freelancer
+	}
+	if req.Role != "freelancer" && req.Role != "client" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role. Must be 'freelancer' or 'client'"})
+		return
+	}
+
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -46,6 +72,7 @@ func Register(c *gin.Context) {
 		Email:    req.Email,
 		Password: string(hashedPassword),
 		Name:     req.Name,
+		Role:     req.Role,
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
@@ -113,6 +140,68 @@ func GetCurrentUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"user": user})
+}
+
+func UpdateProfile(c *gin.Context) {
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	currentUser := user.(models.User)
+
+	var req UpdateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate role if provided
+	if req.Role != "" && req.Role != "freelancer" && req.Role != "client" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role. Must be 'freelancer' or 'client'"})
+		return
+	}
+
+	// Update user fields
+	updateData := models.User{
+		Name:       req.Name,
+		Bio:        req.Bio,
+		Skills:     req.Skills,
+		Profession: req.Profession,
+		Experience: req.Experience,
+		Portfolio:  req.Portfolio,
+		HourlyRate: req.HourlyRate,
+		City:       req.City,
+		Website:    req.Website,
+		LinkedIn:   req.LinkedIn,
+		GitHub:     req.GitHub,
+	}
+
+	// Update role if provided
+	if req.Role != "" {
+		updateData.Role = req.Role
+	}
+
+	// Update availability if provided
+	if req.Available != nil {
+		updateData.Available = *req.Available
+	}
+
+	// Perform the update
+	if err := database.DB.Model(&currentUser).Updates(updateData).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update profile"})
+		return
+	}
+
+	// Fetch the updated user
+	var updatedUser models.User
+	if err := database.DB.Where("id = ?", currentUser.ID).First(&updatedUser).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch updated user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"user": updatedUser})
 }
 
 func generateJWT(userID uint) (string, error) {

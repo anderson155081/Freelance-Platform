@@ -1,5 +1,5 @@
 # backend/Dockerfile.prod
-FROM golang:1.24.3-alpine AS builder
+FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ RUN go mod download
 COPY . .
 
 # 建構應用
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main cmd/server/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main cmd/main.go
 
 # 生產階段
 FROM alpine:latest
@@ -21,7 +21,6 @@ WORKDIR /root/
 
 # 從建構階段複製執行檔
 COPY --from=builder /app/main .
-COPY --from=builder /app/migrations ./migrations
 
 # 暴露端口
 EXPOSE 8080

@@ -1,8 +1,8 @@
 # backend/Dockerfile.dev
-FROM golang:1.24.3-alpine
+FROM golang:1.21-alpine
 
 # 安裝 air 用於熱重載
-RUN go install github.com/cosmtrek/air@latest
+RUN go install github.com/air-verse/air@latest
 
 WORKDIR /app
 

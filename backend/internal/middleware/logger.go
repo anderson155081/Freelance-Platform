@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"log"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -9,7 +9,7 @@ import (
 
 func Logger() gin.HandlerFunc {
 	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-		return log.Printf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
+		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
 			param.ClientIP,
 			param.TimeStamp.Format(time.RFC1123),
 			param.Method,
@@ -20,6 +20,5 @@ func Logger() gin.HandlerFunc {
 			param.Request.UserAgent(),
 			param.ErrorMessage,
 		)
-		return ""
 	})
 } 
