@@ -211,6 +211,11 @@ const projectService = {
     return response.data;
   },
 
+  async updateProjectStatus(id: number, status: string): Promise<{ project: Project }> {
+    const response = await api.put(`/projects/${id}/status`, { status });
+    return response.data;
+  },
+
   async createBid(bidData: CreateBidRequest): Promise<{ bid: Bid }> {
     const response = await api.post('/bids', bidData);
     return response.data;

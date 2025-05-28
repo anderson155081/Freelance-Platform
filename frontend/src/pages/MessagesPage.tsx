@@ -47,10 +47,11 @@ const MessagesPage: React.FC = () => {
       }
       
       const response = await authService.getChats();
-      setChats(response.chats);
+      setChats(response.chats || []); // Ensure chats is never null
       
     } catch (error) {
       console.error('Failed to load chats:', error);
+      setChats([]); // Set to empty array on error
     } finally {
       if (showLoading) {
         setLoading(false);
@@ -64,7 +65,7 @@ const MessagesPage: React.FC = () => {
       
       // Update messages, but preserve optimistic messages that haven't been confirmed yet
       setMessages(prevMessages => {
-        const serverMessages = response.messages;
+        const serverMessages = response.messages || []; // Ensure messages is never null
         const optimisticMessages = prevMessages.filter(msg => 
           typeof msg.id === 'number' && msg.id > 1000000000000 // Optimistic messages have timestamp IDs
         );
@@ -86,6 +87,7 @@ const MessagesPage: React.FC = () => {
       });
     } catch (error) {
       console.error('Failed to load messages:', error);
+      setMessages([]); // Set to empty array on error
     }
   };
 
@@ -113,7 +115,7 @@ const MessagesPage: React.FC = () => {
 
   // Separate effect to update selected chat when chats are refreshed
   useEffect(() => {
-    if (selectedChat && chats.length > 0) {
+    if (selectedChat && Array.isArray(chats) && chats.length > 0) {
       const updatedSelectedChat = chats.find(chat => chat.id === selectedChat.id);
       if (updatedSelectedChat && updatedSelectedChat.unread_count !== selectedChat.unread_count) {
         setSelectedChat(updatedSelectedChat);
@@ -125,7 +127,7 @@ const MessagesPage: React.FC = () => {
   useEffect(() => {
     const initializeFromURL = async () => {
       // If there's a specific chat ID in URL, select it after chats are loaded
-      if (chatId && chats.length > 0) {
+      if (chatId && Array.isArray(chats) && chats.length > 0) {
         const chat = chats.find(c => c.id === parseInt(chatId));
         if (chat && (!selectedChat || selectedChat.id !== chat.id)) {
           setSelectedChat(chat);
@@ -134,7 +136,7 @@ const MessagesPage: React.FC = () => {
         }
       }
       // If there are URL parameters, try to find or create the chat
-      else if (freelancerId && projectId && user?.role === 'client' && chats.length > 0) {
+      else if (freelancerId && projectId && user?.role === 'client' && Array.isArray(chats) && chats.length > 0) {
         await initializeChatFromParams(parseInt(freelancerId), parseInt(projectId));
         // Clear URL parameters after creating/selecting the chat
         navigate('/messages', { replace: true });
@@ -194,9 +196,9 @@ const MessagesPage: React.FC = () => {
     try {
       await authService.markMessagesAsRead(chatId);
       // Update the chat's unread count in local state
-      setChats(prev => prev.map(chat => 
+      setChats(prev => Array.isArray(prev) ? prev.map(chat => 
         chat.id === chatId ? { ...chat, unread_count: 0 } : chat
-      ));
+      ) : []);
     } catch (error) {
       console.error('Failed to mark messages as read:', error);
     }
@@ -272,7 +274,7 @@ const MessagesPage: React.FC = () => {
       await authService.deleteChat(chat.id);
       
       // Remove chat from local state
-      setChats(prev => prev.filter(c => c.id !== chat.id));
+      setChats(prev => Array.isArray(prev) ? prev.filter(c => c.id !== chat.id) : []);
       
       // If this was the selected chat, clear selection
       if (selectedChat?.id === chat.id) {
@@ -327,7 +329,7 @@ const MessagesPage: React.FC = () => {
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
               <p className="mt-2 text-sm text-gray-600">載入中...</p>
             </div>
-          ) : chats.length === 0 ? (
+          ) : !Array.isArray(chats) || chats.length === 0 ? (
             <div className="p-4 text-center">
               <svg className="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -336,7 +338,7 @@ const MessagesPage: React.FC = () => {
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
-              {chats.map(chat => {
+              {Array.isArray(chats) && chats.map(chat => {
                 const otherUser = user.role === 'client' ? chat.freelancer : chat.client;
                 const hasUnread = (chat.unread_count || 0) > 0;
                 

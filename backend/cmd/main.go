@@ -47,6 +47,7 @@ func main() {
 			projects.POST("", middleware.RequireAuth(), handlers.CreateProject)
 			projects.GET("/:id", handlers.GetProject)
 			projects.PUT("/:id", middleware.RequireAuth(), handlers.UpdateProject)
+			projects.PUT("/:id/status", middleware.RequireAuth(), handlers.UpdateProjectStatus)
 			projects.DELETE("/:id", middleware.RequireAuth(), handlers.DeleteProject)
 			projects.GET("/:id/bids", middleware.RequireAuth(), handlers.GetProjectBids)
 		}

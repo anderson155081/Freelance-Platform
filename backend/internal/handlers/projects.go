@@ -38,6 +38,9 @@ func GetProjects(c *gin.Context) {
 	// If requesting own projects, don't filter by status
 	if c.Query("my_projects") != "true" {
 		query = query.Where("status = ?", "open")
+	} else {
+		// For own projects, exclude deleted ones
+		query = query.Where("status != ?", "deleted")
 	}
 	
 	// Add filters for Taiwan market
@@ -97,6 +100,16 @@ func GetProject(c *gin.Context) {
 	var project models.Project
 	if err := database.DB.Preload("Client").Preload("Freelancer").Preload("Bids.Freelancer").First(&project, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		return
+	}
+	
+	// Check if project is deleted
+	if project.Status == "deleted" {
+		c.JSON(http.StatusGone, gin.H{
+			"error":   "Project has been deleted",
+			"message": "案件已被刪除",
+			"deleted": true,
+		})
 		return
 	}
 	
@@ -245,10 +258,16 @@ func DeleteProject(c *gin.Context) {
 		return
 	}
 	
+	// Check if project is already deleted
+	if project.Status == "deleted" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Project is already deleted"})
+		return
+	}
+	
 	// Find all chats related to this project
 	var chats []models.Chat
 	if err := database.DB.Where("project_id = ?", project.ID).Find(&chats).Error; err == nil {
-		// Add system message to each chat before deleting the project
+		// Add system message to each chat before marking project as deleted
 		for _, chat := range chats {
 			systemMessage := models.Message{
 				ChatID:   chat.ID,
@@ -260,7 +279,9 @@ func DeleteProject(c *gin.Context) {
 		}
 	}
 	
-	if err := database.DB.Delete(&project).Error; err != nil {
+	// Mark project as deleted instead of hard deleting
+	project.Status = "deleted"
+	if err := database.DB.Save(&project).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete project"})
 		return
 	}
@@ -375,4 +396,68 @@ func GetProjectBids(c *gin.Context) {
 	}
 	
 	c.JSON(http.StatusOK, gin.H{"bids": bids})
+}
+
+// UpdateProjectStatus allows clients to update their project status (e.g., close project)
+func UpdateProjectStatus(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project ID"})
+		return
+	}
+
+	var req struct {
+		Status string `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	currentUser := user.(models.User)
+
+	var project models.Project
+	if err := database.DB.First(&project, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		return
+	}
+
+	// Check if user owns the project
+	if project.ClientID != currentUser.ID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You can only update your own projects"})
+		return
+	}
+
+	// Validate status
+	validStatuses := []string{"open", "in_progress", "completed", "cancelled"}
+	isValidStatus := false
+	for _, validStatus := range validStatuses {
+		if req.Status == validStatus {
+			isValidStatus = true
+			break
+		}
+	}
+
+	if !isValidStatus {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status. Valid statuses are: open, in_progress, completed, cancelled"})
+		return
+	}
+
+	// Update project status
+	project.Status = req.Status
+	if err := database.DB.Save(&project).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update project status"})
+		return
+	}
+
+	// Load relationships
+	database.DB.Preload("Client").Preload("Freelancer").First(&project, project.ID)
+
+	c.JSON(http.StatusOK, gin.H{"project": project})
 } 

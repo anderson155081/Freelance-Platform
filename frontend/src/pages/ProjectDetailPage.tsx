@@ -28,7 +28,15 @@ const ProjectDetailPage: React.FC = () => {
       setProject(response.project);
     } catch (err: any) {
       console.error('Failed to load project:', err);
-      setError('載入案件失敗');
+      
+      // Handle deleted projects specifically
+      if (err.response?.status === 410 && err.response?.data?.deleted) {
+        setError('案件已被刪除');
+      } else if (err.response?.status === 404) {
+        setError('案件不存在');
+      } else {
+        setError('載入案件失敗');
+      }
     } finally {
       setLoading(false);
     }
@@ -155,9 +163,33 @@ const ProjectDetailPage: React.FC = () => {
   }
 
   if (error) {
+    const isDeleted = error === '案件已被刪除';
+    
     return (
       <div className="text-center py-12">
-        <div className="text-red-600 mb-4">{error}</div>
+        <div className="mb-6">
+          {isDeleted ? (
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+          ) : (
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          )}
+          <h2 className={`text-xl font-semibold mb-2 ${isDeleted ? 'text-yellow-800' : 'text-red-600'}`}>
+            {error}
+          </h2>
+          {isDeleted && (
+            <p className="text-yellow-700 mb-4">
+              此案件已被發案者刪除，無法查看詳細內容。
+            </p>
+          )}
+        </div>
         <button
           onClick={() => navigate('/projects')}
           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
@@ -201,7 +233,7 @@ const ProjectDetailPage: React.FC = () => {
             }`}>
               {project.status === 'open' ? '開放中' :
                project.status === 'in_progress' ? '進行中' :
-               project.status === 'completed' ? '已完成' : '已取消'}
+               project.status === 'completed' ? '已完成' : '已關閉'}
             </span>
             {project.urgency === '急件' && (
               <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">
