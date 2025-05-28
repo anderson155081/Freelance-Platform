@@ -1,14 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const LoginPage: React.FC = () => {
+  const { login, user } = useAuth();
   const navigate = useNavigate();
-  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Redirect after successful login
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'client') {
+        navigate('/my-projects');
+      } else {
+        navigate('/projects');
+      }
+    }
+  }, [user, navigate]);
 
   const validateForm = () => {
     if (!email.trim()) {
@@ -47,11 +58,8 @@ const LoginPage: React.FC = () => {
     try {
       await login(email.trim().toLowerCase(), password);
       
-      // Login successful
-      console.log('登入成功');
-      
-      // Redirect to dashboard
-      navigate('/dashboard');
+      // Note: user will be updated in context after login
+      // We'll redirect in useEffect when user changes
     } catch (err: any) {
       console.error('登入錯誤:', err);
       

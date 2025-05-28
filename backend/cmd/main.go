@@ -61,11 +61,14 @@ func main() {
 			chats.GET("", middleware.RequireAuth(), handlers.GetChats)
 			chats.POST("", middleware.RequireAuth(), handlers.CreateChat)
 			chats.GET("/:id/messages", middleware.RequireAuth(), handlers.GetChatMessages)
+			chats.PUT("/:id/read", middleware.RequireAuth(), handlers.MarkMessagesAsRead)
+			chats.DELETE("/:id", middleware.RequireAuth(), handlers.DeleteChat)
 		}
 
 		messages := api.Group("/messages")
 		{
 			messages.POST("", middleware.RequireAuth(), handlers.SendMessage)
+			messages.GET("/unread-count", middleware.RequireAuth(), handlers.GetUnreadCount)
 		}
 	}
 

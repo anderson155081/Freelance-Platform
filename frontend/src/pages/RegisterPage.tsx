@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -14,6 +14,17 @@ const RegisterPage: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Redirect after successful registration and login
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'client') {
+        navigate('/my-projects');
+      } else {
+        navigate('/projects');
+      }
+    }
+  }, [user, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
@@ -78,11 +89,8 @@ const RegisterPage: React.FC = () => {
       // Then log them in using the context
       await login(formData.email.trim().toLowerCase(), formData.password);
       
-      // Registration successful
+      // Registration successful - redirect will be handled by useEffect
       console.log('註冊成功');
-      
-      // Redirect to dashboard
-      navigate('/dashboard');
     } catch (err: any) {
       console.error('註冊錯誤:', err);
       

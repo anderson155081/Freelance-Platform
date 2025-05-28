@@ -14,6 +14,8 @@ type Chat struct {
 	Client    User           `json:"client,omitempty"`
 	FreelancerID uint        `json:"freelancer_id" gorm:"not null"`
 	Freelancer   User        `json:"freelancer,omitempty"`
+	ClientHidden    bool      `json:"client_hidden" gorm:"default:false"`
+	FreelancerHidden bool     `json:"freelancer_hidden" gorm:"default:false"`
 	Messages  []Message      `json:"messages,omitempty"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`

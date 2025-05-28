@@ -4,9 +4,11 @@ import './App.css';
 
 // Context
 import { AuthProvider } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 
 // Components
 import Navbar from './components/Navbar';
+import ToastContainer from './components/Toast';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -21,25 +23,28 @@ import MessagesPage from './pages/MessagesPage';
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="App min-h-screen bg-gray-50">
-          <Navbar />
-          <main className="container mx-auto px-4 py-8">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/projects" element={<ProjectsPage />} />
-              <Route path="/post-task" element={<PostTaskPage />} />
-              <Route path="/projects/:id" element={<ProjectDetailPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/my-projects" element={<MyProjectsPage />} />
-              <Route path="/messages" element={<MessagesPage />} />
-            </Routes>
-          </main>
-        </div>
-      </Router>
+      <NotificationProvider>
+        <Router>
+          <div className="App min-h-screen bg-gray-50">
+            <Navbar />
+            <main className="container mx-auto px-4 py-8">
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/post-task" element={<PostTaskPage />} />
+                <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/my-projects" element={<MyProjectsPage />} />
+                <Route path="/messages" element={<MessagesPage />} />
+              </Routes>
+            </main>
+            <ToastContainer />
+          </div>
+        </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

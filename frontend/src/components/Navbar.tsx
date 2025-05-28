@@ -1,11 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { authService } from '../services/auth';
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Load unread count when user is authenticated
+  useEffect(() => {
+    const loadUnreadCount = async () => {
+      if (user) {
+        try {
+          const response = await authService.getUnreadCount();
+          setUnreadCount(response.unread_count);
+        } catch (error) {
+          console.error('Failed to load unread count:', error);
+        }
+      } else {
+        setUnreadCount(0);
+      }
+    };
+
+    loadUnreadCount();
+
+    // Poll for unread count every 10 seconds when user is authenticated
+    let interval: NodeJS.Timeout | null = null;
+    if (user) {
+      interval = setInterval(loadUnreadCount, 10000);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [user]);
 
   const handleLogout = async () => {
     await logout();
@@ -42,8 +74,13 @@ const Navbar: React.FC = () => {
                     案件列表
                   </Link>
                 )}
-                <Link to="/messages" className="text-gray-700 hover:text-blue-600">
+                <Link to="/messages" className="text-gray-700 hover:text-blue-600 flex items-center">
                   訊息
+                  {unreadCount > 0 && (
+                    <span className="ml-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                 </Link>
               </>
             ) : (

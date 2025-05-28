@@ -1,17 +1,60 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { authService, Project, Bid } from '../services/auth';
+import { useNotification } from '../contexts/NotificationContext';
+import { authService, Project, Bid, UpdateProjectRequest } from '../services/auth';
+
+const categories = [
+  '商業設計',
+  '程式開發', 
+  '文書翻譯',
+  '企劃行銷',
+  '攝影娛樂',
+  '生活服務',
+  '法律諮詢',
+  '財務會計'
+];
+
+const locations = [
+  'Remote',
+  '台北市',
+  '新北市',
+  '桃園市',
+  '台中市',
+  '台南市',
+  '高雄市',
+  '新竹市',
+  '其他縣市'
+];
 
 const MyProjectsPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { showSuccess, showError, showWarning } = useNotification();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [bids, setBids] = useState<Bid[]>([]);
   const [showBidsModal, setShowBidsModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  
+  // Edit form state
+  const [editForm, setEditForm] = useState<UpdateProjectRequest>({
+    title: '',
+    description: '',
+    budget_min: 0,
+    budget_max: 0,
+    category: '',
+    location: '',
+    skills: '',
+    requirements: '',
+    urgency: ''
+  });
 
   // Redirect if user is not a client
   useEffect(() => {
@@ -20,17 +63,16 @@ const MyProjectsPage: React.FC = () => {
     }
   }, [user, navigate]);
 
-  useEffect(() => {
-    loadMyProjects();
-  }, []);
-
-  const loadMyProjects = async () => {
+  const loadMyProjects = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
 
-      // Get projects where the current user is the client
-      const response = await authService.getProjects({ limit: 100 });
+      // Get all projects for the current user (not just open ones)
+      const response = await authService.getProjects({ 
+        limit: 100,
+        my_projects: true
+      });
       const myProjects = response.projects.filter(project => project.client_id === user?.id);
       setProjects(myProjects);
     } catch (err: any) {
@@ -39,7 +81,11 @@ const MyProjectsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    loadMyProjects();
+  }, [loadMyProjects]);
 
   const loadProjectBids = async (projectId: number) => {
     try {
@@ -48,7 +94,7 @@ const MyProjectsPage: React.FC = () => {
       setShowBidsModal(true);
     } catch (err: any) {
       console.error('Failed to load bids:', err);
-      alert('載入提案失敗，請稍後再試');
+      showError('載入提案失敗，請稍後再試');
     }
   };
 
@@ -71,7 +117,96 @@ const MyProjectsPage: React.FC = () => {
       navigate(`/messages?chat=${response.chat.id}`);
     } catch (error) {
       console.error('Failed to create chat:', error);
-      alert('無法開始聊天，請稍後再試');
+      showError('無法開始聊天，請稍後再試');
+    }
+  };
+
+  const handleEditProject = (project: Project) => {
+    setSelectedProject(project);
+    
+    // Parse requirements back to string format for editing
+    let requirementsString = '';
+    try {
+      const requirementsArray = JSON.parse(project.requirements);
+      requirementsString = Array.isArray(requirementsArray) ? requirementsArray.join('\n') : project.requirements;
+    } catch {
+      requirementsString = project.requirements;
+    }
+    
+    setEditForm({
+      title: project.title,
+      description: project.description,
+      budget_min: project.budget_min,
+      budget_max: project.budget_max,
+      category: project.category,
+      location: project.location,
+      skills: project.skills,
+      requirements: requirementsString,
+      urgency: project.urgency
+    });
+    setShowEditModal(true);
+  };
+
+  const handleDeleteProject = async (project: Project) => {
+    try {
+      setDeleteLoading(true);
+      await authService.deleteProject(project.id);
+      showSuccess('案件刪除成功！');
+      
+      // Reload projects
+      await loadMyProjects();
+      
+      // Close modal and reset state
+      setProjectToDelete(null);
+    } catch (error: any) {
+      console.error('Failed to delete project:', error);
+      showError(error.response?.data?.error || '刪除失敗，請稍後再試');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProject) return;
+
+    // Validate form
+    if (editForm.budget_min >= editForm.budget_max) {
+      showWarning('最低預算必須小於最高預算');
+      return;
+    }
+
+    if (!editForm.title.trim()) {
+      showWarning('請填寫案件標題');
+      return;
+    }
+
+    try {
+      setEditLoading(true);
+      
+      // Convert requirements back to JSON array format
+      const requirementsArray = editForm.requirements
+        .split('\n')
+        .map(req => req.trim())
+        .filter(req => req.length > 0);
+      
+      const updateData = {
+        ...editForm,
+        requirements: JSON.stringify(requirementsArray)
+      };
+      
+      await authService.updateProject(selectedProject.id, updateData);
+      showSuccess('案件更新成功！');
+      
+      // Reload projects
+      await loadMyProjects();
+      setShowEditModal(false);
+      setSelectedProject(null);
+    } catch (error: any) {
+      console.error('Failed to update project:', error);
+      showError(error.response?.data?.error || '更新失敗，請稍後再試');
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -166,15 +301,38 @@ const MyProjectsPage: React.FC = () => {
                     NT$ {project.budget_min.toLocaleString()} - {project.budget_max.toLocaleString()}
                   </span>
                   
-                  <button
-                    onClick={() => handleViewBids(project)}
-                    className="btn-secondary flex items-center gap-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    查看提案 {project.bids ? `(${project.bids.length})` : '(0)'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEditProject(project)}
+                      className="btn-secondary flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      編輯案件
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowDeleteModal(true);
+                        setProjectToDelete(project);
+                      }}
+                      className="px-3 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      刪除案件
+                    </button>
+                    <button
+                      onClick={() => handleViewBids(project)}
+                      className="btn-secondary flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      查看提案 {project.bids ? `(${project.bids.length})` : '(0)'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -304,6 +462,263 @@ const MyProjectsPage: React.FC = () => {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Project Modal */}
+      {showEditModal && selectedProject && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-6 border-b">
+              <h2 className="text-xl font-bold text-gray-900">編輯案件</h2>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setSelectedProject(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="p-6 space-y-6">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900">基本資訊</h3>
+                
+                {/* Title */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    案件標題 *
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.title}
+                    onChange={(e) => setEditForm({...editForm, title: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="例如：Logo 設計、網站開發、文件翻譯..."
+                    required
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    詳細描述 *
+                  </label>
+                  <textarea
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                    rows={6}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="請詳細描述您的案件需求、預期成果、時間安排等..."
+                    required
+                  />
+                </div>
+
+                {/* Budget */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      最低預算 (新台幣) *
+                    </label>
+                    <input
+                      type="number"
+                      value={editForm.budget_min}
+                      onChange={(e) => setEditForm({...editForm, budget_min: parseInt(e.target.value)})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="5000"
+                      min="1"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      最高預算 (新台幣) *
+                    </label>
+                    <input
+                      type="number"
+                      value={editForm.budget_max}
+                      onChange={(e) => setEditForm({...editForm, budget_max: parseInt(e.target.value)})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="50000"
+                      min="1"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Category and Location */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      案件類別 *
+                    </label>
+                    <select
+                      value={editForm.category}
+                      onChange={(e) => setEditForm({...editForm, category: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      {categories.map(category => (
+                        <option key={category} value={category}>{category}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      工作地點 *
+                    </label>
+                    <select
+                      value={editForm.location}
+                      onChange={(e) => setEditForm({...editForm, location: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      {locations.map(location => (
+                        <option key={location} value={location}>{location}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Urgency */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    急迫程度
+                  </label>
+                  <select
+                    value={editForm.urgency}
+                    onChange={(e) => setEditForm({...editForm, urgency: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="一般">一般</option>
+                    <option value="急件">急件</option>
+                  </select>
+                </div>
+
+                {/* Skills */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    需要技能
+                  </label>
+                  <input
+                    type="text"
+                    value={(() => {
+                      try {
+                        const skillsArray = JSON.parse(editForm.skills || '[]');
+                        return skillsArray.join(', ');
+                      } catch {
+                        return editForm.skills || '';
+                      }
+                    })()}
+                    onChange={(e) => {
+                      const skillsArray = e.target.value
+                        .split(',')
+                        .map(skill => skill.trim())
+                        .filter(skill => skill.length > 0);
+                      setEditForm({...editForm, skills: JSON.stringify(skillsArray)});
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="例如：Photoshop, Illustrator, React, Node.js（用逗號分隔）"
+                  />
+                </div>
+
+                {/* Requirements */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    其他需求
+                  </label>
+                  <textarea
+                    value={editForm.requirements}
+                    onChange={(e) => setEditForm({...editForm, requirements: e.target.value})}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="請描述其他特殊需求或條件，每項需求請單獨一行..."
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setSelectedProject(null);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                  disabled={editLoading}
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className={`flex-1 btn-primary ${editLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={editLoading}
+                >
+                  {editLoading ? '更新中...' : '更新案件'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Project Modal */}
+      {showDeleteModal && projectToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-6 border-b">
+              <h2 className="text-xl font-bold text-gray-900">刪除案件</h2>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setProjectToDelete(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6">
+              <p className="text-gray-700 mb-4">
+                確定要刪除案件「{projectToDelete.title}」嗎？此操作無法復原，所有相關的提案和聊天記錄也會被刪除。
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setProjectToDelete(null);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                  disabled={deleteLoading}
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDeleteProject(projectToDelete);
+                    setShowDeleteModal(false);
+                  }}
+                  className={`flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 ${deleteLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={deleteLoading}
+                >
+                  {deleteLoading ? '刪除中...' : '刪除案件'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

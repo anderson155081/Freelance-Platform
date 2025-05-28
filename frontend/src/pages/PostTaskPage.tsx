@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { authService, CreateProjectRequest } from '../services/auth';
 
 const categories = [
@@ -29,6 +30,7 @@ const locations = [
 const PostTaskPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { showSuccess, showError } = useNotification();
   
   const [formData, setFormData] = useState({
     title: '',
@@ -131,7 +133,7 @@ const PostTaskPage: React.FC = () => {
       // Call API to create project using authService
       await authService.createProject(taskData);
       
-      alert('案件發布成功！');
+      showSuccess('案件發布成功！');
       navigate('/projects');
     } catch (error: any) {
       console.error('發布案件失敗:', error);
@@ -145,7 +147,7 @@ const PostTaskPage: React.FC = () => {
         errorMessage = '伺服器錯誤，請稍後再試';
       }
       
-      alert(`發布失敗：${errorMessage}`);
+      showError(`發布失敗：${errorMessage}`);
     } finally {
       setLoading(false);
     }

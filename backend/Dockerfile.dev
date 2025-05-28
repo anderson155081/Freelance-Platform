@@ -2,7 +2,7 @@
 FROM golang:1.21-alpine
 
 # 安裝 air 用於熱重載
-RUN go install github.com/air-verse/air@latest
+RUN go install github.com/cosmtrek/air@v1.49.0
 
 WORKDIR /app
 

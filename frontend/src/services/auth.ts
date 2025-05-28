@@ -102,6 +102,7 @@ export interface ProjectFilters {
   urgency?: string;
   page?: number;
   limit?: number;
+  my_projects?: boolean;
 }
 
 export interface CreateBidRequest {
@@ -112,6 +113,18 @@ export interface CreateBidRequest {
 }
 
 export interface CreateProjectRequest {
+  title: string;
+  description: string;
+  budget_min: number;
+  budget_max: number;
+  category: string;
+  location: string;
+  skills: string;
+  requirements: string;
+  urgency: string;
+}
+
+export interface UpdateProjectRequest {
   title: string;
   description: string;
   budget_min: number;
@@ -137,6 +150,7 @@ export interface Chat {
   freelancer: User;
   created_at: string;
   updated_at: string;
+  unread_count?: number; // Added for unread count
 }
 
 export interface Message {
@@ -146,6 +160,7 @@ export interface Message {
   sender: User;
   content: string;
   type: string;
+  read_at?: string; // Added for read status
   created_at: string;
 }
 
@@ -186,6 +201,16 @@ const projectService = {
     return response.data;
   },
 
+  async updateProject(id: number, projectData: UpdateProjectRequest): Promise<{ project: Project }> {
+    const response = await api.put(`/projects/${id}`, projectData);
+    return response.data;
+  },
+
+  async deleteProject(id: number): Promise<{ success: boolean }> {
+    const response = await api.delete(`/projects/${id}`);
+    return response.data;
+  },
+
   async createBid(bidData: CreateBidRequest): Promise<{ bid: Bid }> {
     const response = await api.post('/bids', bidData);
     return response.data;
@@ -215,6 +240,21 @@ const chatService = {
 
   async sendMessage(messageData: SendMessageRequest): Promise<{ message: Message }> {
     const response = await api.post('/messages', messageData);
+    return response.data;
+  },
+
+  async markMessagesAsRead(chatId: number): Promise<{ success: boolean }> {
+    const response = await api.put(`/chats/${chatId}/read`);
+    return response.data;
+  },
+
+  async getUnreadCount(): Promise<{ unread_count: number }> {
+    const response = await api.get('/messages/unread-count');
+    return response.data;
+  },
+
+  async deleteChat(chatId: number): Promise<{ success: boolean }> {
+    const response = await api.delete(`/chats/${chatId}`);
     return response.data;
   }
 };

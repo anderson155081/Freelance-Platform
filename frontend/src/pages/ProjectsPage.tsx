@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { authService, Project, ProjectFilters, CreateBidRequest } from '../services/auth';
+import { authService, Project, ProjectFilters } from '../services/auth';
+import { useNavigate } from 'react-router-dom';
 
 const categories = [
   '全部類別',
@@ -27,242 +28,22 @@ const locations = [
   '其他縣市'
 ];
 
-interface BidModalProps {
-  project: Project;
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (bidData: any) => void;
-}
-
-const BidModal: React.FC<BidModalProps> = ({ project, isOpen, onClose, onSubmit }) => {
-  const [bidAmount, setBidAmount] = useState('');
-  const [proposal, setProposal] = useState('');
-  const [timeline, setTimeline] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const parseSkills = (skills: string): string[] => {
-    try {
-      return JSON.parse(skills || '[]');
-    } catch {
-      return skills ? skills.split(',').map(s => s.trim()) : [];
-    }
-  };
-
-  const parseRequirements = (requirements: string): string[] => {
-    try {
-      return JSON.parse(requirements || '[]');
-    } catch {
-      return requirements ? requirements.split(',').map(s => s.trim()) : [];
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      await onSubmit({
-        project_id: project.id,
-        amount: parseInt(bidAmount),
-        proposal,
-        timeline
-      });
-      
-      // Reset form
-      setBidAmount('');
-      setProposal('');
-      setTimeline('');
-      onClose();
-    } catch (error) {
-      console.error('投標失敗:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Modal Header */}
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-xl font-bold text-gray-900">案件詳情</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="p-6">
-          {/* Project Details */}
-          <div className="mb-8">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">{project.title}</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">預算範圍</span>
-                    <p className="text-lg font-bold text-green-600">
-                      NT$ {project.budget_min.toLocaleString()} - {project.budget_max.toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">案件類別</span>
-                    <p className="text-gray-900">{project.category}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">工作地點</span>
-                    <p className="text-gray-900">{project.location}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">發案者</span>
-                    <p className="text-gray-900">{project.client.name}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">發布時間</span>
-                    <p className="text-gray-900">{new Date(project.created_at).toLocaleDateString('zh-TW')}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-600">急迫程度</span>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      project.urgency === '急件' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {project.urgency}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h4 className="text-lg font-medium text-gray-900 mb-3">案件描述</h4>
-              <p className="text-gray-700 leading-relaxed">{project.description}</p>
-            </div>
-
-            <div className="mb-6">
-              <h4 className="text-lg font-medium text-gray-900 mb-3">需求技能</h4>
-              <div className="flex flex-wrap gap-2">
-                {parseSkills(project.skills).map((skill: string, index: number) => (
-                  <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h4 className="text-lg font-medium text-gray-900 mb-3">應徵要求</h4>
-              <ul className="list-disc list-inside space-y-1 text-gray-700">
-                {parseRequirements(project.requirements).map((req: string, index: number) => (
-                  <li key={index}>{req}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* Bid Form */}
-          <div className="border-t pt-6">
-            <h4 className="text-lg font-medium text-gray-900 mb-4">我要接案</h4>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  報價金額 (新台幣) *
-                </label>
-                <input
-                  type="number"
-                  value={bidAmount}
-                  onChange={(e) => setBidAmount(e.target.value)}
-                  className="input-field"
-                  required
-                  min={project.budget_min}
-                  max={project.budget_max}
-                  placeholder={`建議範圍: ${project.budget_min.toLocaleString()} - ${project.budget_max.toLocaleString()}`}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  預計完成時間 *
-                </label>
-                <input
-                  type="text"
-                  value={timeline}
-                  onChange={(e) => setTimeline(e.target.value)}
-                  className="input-field"
-                  required
-                  placeholder="例如：2週、1個月"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  提案說明 *
-                </label>
-                <textarea
-                  value={proposal}
-                  onChange={(e) => setProposal(e.target.value)}
-                  rows={6}
-                  className="input-field"
-                  required
-                  placeholder="請說明您的經驗、工作方式、為什麼適合這個案件等..."
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-                  disabled={loading}
-                >
-                  取消
-                </button>
-                <button
-                  type="submit"
-                  className={`flex-1 btn-primary ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  disabled={loading}
-                >
-                  {loading ? '送出中...' : '送出提案'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const ProjectsPage: React.FC = () => {
   const { user } = useAuth();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const navigate = useNavigate();
+  
+  // State for projects
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+  
+  // State for filters
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('全部類別');
   const [selectedLocation, setSelectedLocation] = useState('全部地點');
   const [priceRange, setPriceRange] = useState([0, 200000]);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [showBidModal, setShowBidModal] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   // Load projects from API
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
-      setLoading(true);
-      setError('');
-      
       const filters: ProjectFilters = {
         search: searchTerm || undefined,
         category: selectedCategory !== '全部類別' ? selectedCategory : undefined,
@@ -273,19 +54,15 @@ const ProjectsPage: React.FC = () => {
       };
 
       const response = await authService.getProjects(filters);
-      setProjects(response.projects);
       setFilteredProjects(response.projects);
     } catch (err: any) {
       console.error('Failed to load projects:', err);
-      setError('載入案件失敗，請稍後再試');
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [searchTerm, selectedCategory, selectedLocation, priceRange]);
 
   useEffect(() => {
     loadProjects();
-  }, []);
+  }, [loadProjects]);
 
   // Reload projects when filters change
   useEffect(() => {
@@ -297,55 +74,9 @@ const ProjectsPage: React.FC = () => {
   }, [searchTerm, selectedCategory, selectedLocation, priceRange, loadProjects]);
 
   const handleProjectClick = (project: Project) => {
-    // Check user role before showing bid modal
-    if (user?.role === 'client') {
-      // For clients, show an informational message instead of bidding
-      alert('如果你要接案請切換至接案者身份。您目前是發案者，可以在「我的案件」頁面查看您發布案件的提案。');
-      return;
-    }
-    
-    // Check if user has already bid on this project
-    const userHasBid = project.bids?.some(bid => bid.freelancer_id === user?.id);
-    
-    if (userHasBid) {
-      // Show message for users who have already bid
-      alert('妳已提案，如發案者有意願與你合作，將會發送訊息給您。');
-      return;
-    }
-    
-    setSelectedProject(project);
-    setShowBidModal(true);
-  };
-
-  const handleBidSubmit = async (bidData: any) => {
-    try {
-      const createBidData: CreateBidRequest = {
-        project_id: bidData.project_id,
-        amount: bidData.amount,
-        proposal: bidData.proposal,
-        timeline: bidData.timeline
-      };
-
-      await authService.createBid(createBidData);
-      alert('投標成功！發案者會盡快回覆您。');
-      
-      // Reload projects to get updated data
-      await loadProjects();
-    } catch (err: any) {
-      console.error('投標失敗:', err);
-      let errorMessage = '投標失敗，請稍後再試';
-      
-      if (err.response?.status === 409) {
-        errorMessage = '您已經對此案件投標過了';
-      } else if (err.response?.status === 403) {
-        errorMessage = '您無法對此案件投標';
-      } else if (err.response?.status === 400) {
-        errorMessage = err.response.data?.error || '投標資料有誤';
-      }
-      
-      alert(errorMessage);
-      throw err; // Let the modal handle the error
-    }
+    // Allow all users to navigate to project detail page
+    // The ProjectDetailPage will handle role-specific logic and bidding
+    navigate(`/projects/${project.id}`);
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -571,19 +302,6 @@ const ProjectsPage: React.FC = () => {
           <h3 className="mt-2 text-sm font-medium text-gray-900">沒有找到符合條件的案件</h3>
           <p className="mt-1 text-sm text-gray-500">請試著調整搜尋條件或篩選器</p>
         </div>
-      )}
-
-      {/* Bid Modal */}
-      {selectedProject && (
-        <BidModal
-          project={selectedProject}
-          isOpen={showBidModal}
-          onClose={() => {
-            setShowBidModal(false);
-            setSelectedProject(null);
-          }}
-          onSubmit={handleBidSubmit}
-        />
       )}
     </div>
   );

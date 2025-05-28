@@ -33,7 +33,12 @@ type BidRequest struct {
 func GetProjects(c *gin.Context) {
 	var projects []models.Project
 	
-	query := database.DB.Preload("Client").Preload("Freelancer").Where("status = ?", "open")
+	query := database.DB.Preload("Client").Preload("Freelancer").Preload("Bids")
+	
+	// If requesting own projects, don't filter by status
+	if c.Query("my_projects") != "true" {
+		query = query.Where("status = ?", "open")
+	}
 	
 	// Add filters for Taiwan market
 	if category := c.Query("category"); category != "" && category != "全部類別" {
@@ -238,6 +243,21 @@ func DeleteProject(c *gin.Context) {
 	if project.ClientID != currentUser.ID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "You can only delete your own projects"})
 		return
+	}
+	
+	// Find all chats related to this project
+	var chats []models.Chat
+	if err := database.DB.Where("project_id = ?", project.ID).Find(&chats).Error; err == nil {
+		// Add system message to each chat before deleting the project
+		for _, chat := range chats {
+			systemMessage := models.Message{
+				ChatID:   chat.ID,
+				SenderID: currentUser.ID, // Use the project owner as sender
+				Content:  "此案件已被發案者刪除。",
+				Type:     "system",
+			}
+			database.DB.Create(&systemMessage)
+		}
 	}
 	
 	if err := database.DB.Delete(&project).Error; err != nil {
